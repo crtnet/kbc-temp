@@ -34,3 +34,4 @@ backend/.env
 
 # typescript
 *.tsbuildinfo
+backend/.env
