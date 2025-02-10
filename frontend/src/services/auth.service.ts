@@ -11,8 +11,7 @@ export const AuthService = {
       const { token } = response.data;
       
       if (token) {
-        await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        await this.setToken(token);
         console.log('AuthService: Token salvo com sucesso');
         return { success: true, token };
       }
@@ -25,10 +24,24 @@ export const AuthService = {
     }
   },
 
+  async setToken(token: string) {
+    try {
+      await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      console.log('AuthService: Token configurado nos headers');
+    } catch (error) {
+      console.error('AuthService: Erro ao salvar token:', error);
+      throw error;
+    }
+  },
+
   async getToken() {
     try {
       const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-      console.log('AuthService: Token recuperado:', token);
+      if (token) {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        console.log('AuthService: Token recuperado e configurado nos headers');
+      }
       return token;
     } catch (error) {
       console.error('AuthService: Erro ao recuperar token:', error);
@@ -59,6 +72,7 @@ export const AuthService = {
       return response.status === 200;
     } catch (error) {
       console.error('AuthService: Erro ao verificar token:', error);
+      await this.removeToken();
       return false;
     }
   }
