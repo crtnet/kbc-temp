@@ -8,12 +8,18 @@ const api = axios.create({
 // Interceptor para adicionar o token em todas as requisições
 api.interceptors.request.use(async (config) => {
   try {
-    const token = await AsyncStorage.getItem('@KidsBook:token');
+    const token = await AsyncStorage.getItem('@KidsBookCreator:token');
+    console.log('Token recuperado:', token);
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('Headers configurados:', config.headers);
+    } else {
+      console.log('Token não encontrado no AsyncStorage');
     }
     return config;
   } catch (error) {
+    console.error('Erro ao configurar token:', error);
     return Promise.reject(error);
   }
 });
@@ -23,8 +29,13 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      // Se receber 401, não fazer logout automático, apenas retornar o erro
-      return Promise.reject(error);
+      console.log('Erro 401 detectado - Token inválido ou expirado');
+      try {
+        await AsyncStorage.removeItem('@KidsBookCreator:token');
+        console.log('Token removido do AsyncStorage');
+      } catch (storageError) {
+        console.error('Erro ao remover token:', storageError);
+      }
     }
     return Promise.reject(error);
   }
