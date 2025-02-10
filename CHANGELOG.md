@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Authentication state management
 - Token validation on app initialization
 - Inconsistent storage key names
+- Async initialization in AuthService singleton
+- Race condition in AuthContext initialization
 
 ## [0.1.0] - 2025-02-10
 

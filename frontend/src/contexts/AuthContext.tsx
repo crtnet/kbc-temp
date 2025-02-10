@@ -13,12 +13,34 @@ interface AuthContextData {
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const authService = AuthService.getInstance();
+  const [authService, setAuthService] = useState<AuthService | null>(null);
   const [loading, setLoading] = useState(true);
-  const [state, setState] = useState(authService.getState());
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    token: null,
+    isAuthenticated: false
+  });
 
   useEffect(() => {
-    async function initializeAuth() {
+    const initializeAuthService = async () => {
+      try {
+        const service = await AuthService.getInstance();
+        setAuthService(service);
+        setState(service.getState());
+      } catch (error) {
+        console.error('Error initializing AuthService:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuthService();
+  }, []);
+
+  useEffect(() => {
+    if (!authService) return;
+
+    async function verifyToken() {
       try {
         console.log('AuthContext: Checking token validity...');
         const isValid = await authService.verifyToken();
@@ -30,9 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setState(authService.getState());
       } catch (error) {
-        console.error('AuthContext: Error initializing auth:', error);
-      } finally {
-        setLoading(false);
+        console.error('AuthContext: Error checking token:', error);
       }
     }
 
@@ -43,14 +63,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     window.addEventListener('auth:unauthorized', handleUnauthorized);
-    initializeAuth();
+    verifyToken();
 
     return () => {
       window.removeEventListener('auth:unauthorized', handleUnauthorized);
     };
-  }, []);
+  }, [authService]);
 
   const signIn = async (email: string, password: string) => {
+    if (!authService) {
+      throw new Error('AuthService not initialized');
+    }
+
     try {
       console.log('AuthContext: Starting login...');
       await authService.signIn({ email, password });
@@ -63,6 +87,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    if (!authService) {
+      console.warn('AuthService not initialized');
+      return;
+    }
+
     try {
       console.log('AuthContext: Starting logout...');
       await authService.signOut();

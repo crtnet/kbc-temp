@@ -11,14 +11,21 @@ class AuthService {
     isAuthenticated: false
   };
 
+  private initialized: boolean = false;
+  private initPromise: Promise<void> | null = null;
+
   private constructor() {
     // Private constructor to enforce singleton
-    this.initialize();
+    this.initPromise = this.initialize();
   }
 
-  public static getInstance(): AuthService {
+  public static async getInstance(): Promise<AuthService> {
     if (!AuthService.instance) {
       AuthService.instance = new AuthService();
+    }
+    if (!AuthService.instance.initialized) {
+      await AuthService.instance.initPromise;
+      AuthService.instance.initialized = true;
     }
     return AuthService.instance;
   }
