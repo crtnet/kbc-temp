@@ -36,7 +36,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    // Listen for unauthorized events
+    const handleUnauthorized = () => {
+      console.log('AuthContext: Received unauthorized event');
+      signOut();
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
     initializeAuth();
+
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

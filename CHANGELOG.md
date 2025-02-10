@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Fixed circular dependency in auth system
+- Added event-based auth error handling
+- Separated API configuration from auth logic
 - Improved state management in AuthService
 - User data persistence with auth state
 - New signOut method in AuthService

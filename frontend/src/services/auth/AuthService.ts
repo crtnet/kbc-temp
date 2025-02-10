@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '../api';
+import { api, configureAxiosToken } from '../api/axiosConfig';
 import { AUTH_STORAGE_KEYS, API_ROUTES } from './constants';
 import type { AuthResponse, LoginCredentials, AuthState, User } from './types';
 
@@ -44,13 +44,7 @@ class AuthService {
   }
 
   private configureAxiosToken(token: string | null) {
-    if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      console.log('AuthService: Token configured in axios headers');
-    } else {
-      delete api.defaults.headers.common['Authorization'];
-      console.log('AuthService: Token removed from axios headers');
-    }
+    configureAxiosToken(token);
   }
 
   public getState(): AuthState {
