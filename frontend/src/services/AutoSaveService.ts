@@ -12,6 +12,10 @@ class AutoSaveService {
   private currentData: BookData | null = null;
   private isDirty: boolean = false;
 
+  public getCurrentData(): BookData | null {
+    return this.currentData;
+  }
+
   constructor(config: AutoSaveConfig) {
     this.config = {
       interval: 30000, // Default: 30 seconds
