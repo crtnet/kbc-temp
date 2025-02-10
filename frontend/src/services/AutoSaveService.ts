@@ -68,21 +68,43 @@ class AutoSaveService {
     if (!this.currentData) return;
 
     try {
+      console.log('AutoSaveService: Preparando dados para salvar:', this.currentData);
+
+      // Garantir que todos os campos obrigatórios estejam presentes
+      const dataToSave = {
+        title: this.currentData.title || '',
+        genre: this.currentData.genre || 'fantasy',
+        theme: this.currentData.theme || 'friendship',
+        mainCharacter: this.currentData.character || '',
+        setting: this.currentData.setting || '',
+        tone: this.currentData.tone || 'fun',
+        status: 'draft'
+      };
+
+      console.log('AutoSaveService: Dados formatados:', dataToSave);
+
       const response = await fetch('/api/books/autosave', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          data: this.currentData,
+          data: dataToSave,
           timestamp: new Date().toISOString(),
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to auto-save book data');
+        const errorData = await response.json();
+        console.error('AutoSaveService: Erro na resposta:', errorData);
+        throw new Error(errorData.message || 'Failed to auto-save book data');
       }
+
+      const result = await response.json();
+      console.log('AutoSaveService: Salvamento bem-sucedido:', result);
     } catch (error) {
+      console.error('AutoSaveService: Erro ao salvar:', error);
       this.config.onError?.(error as Error);
       throw error;
     }

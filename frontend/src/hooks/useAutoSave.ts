@@ -47,9 +47,29 @@ export function useAutoSave(
     console.log('useAutoSave: Atualizando dados:', newData);
     try {
       if (autoSaveRef.current) {
-        autoSaveRef.current.updateData(newData);
+        // Mesclar dados existentes com novos dados
+        const mergedData = {
+          ...autoSaveRef.current.getCurrentData(),
+          ...newData
+        };
+        
+        console.log('useAutoSave: Dados mesclados:', mergedData);
+        
+        // Garantir que todos os campos obrigatórios tenham valores padrão
+        const validatedData = {
+          title: mergedData.title || '',
+          genre: mergedData.genre || 'fantasy',
+          theme: mergedData.theme || 'friendship',
+          character: mergedData.character || '',
+          setting: mergedData.setting || '',
+          tone: mergedData.tone || 'fun'
+        };
+        
+        console.log('useAutoSave: Dados validados:', validatedData);
+        autoSaveRef.current.updateData(validatedData);
       } else {
         console.warn('useAutoSave: AutoSaveService não inicializado');
+        throw new Error('AutoSaveService não inicializado');
       }
     } catch (error) {
       console.error('useAutoSave: Erro ao atualizar dados:', error);
