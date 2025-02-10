@@ -102,6 +102,78 @@ export const getUserBooks = async (req: Request, res: Response) => {
   }
 };
 
+// Função para buscar o último rascunho
+export const getLatestDraft = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id;
+    
+    const latestDraft = await Book.findOne({
+      author: userId,
+      status: 'draft'
+    })
+    .sort({ lastAutoSave: -1 })
+    .select('-content.story');
+
+    if (!latestDraft) {
+      return res.status(404).json({ message: 'Nenhum rascunho encontrado' });
+    }
+
+    res.json(latestDraft);
+  } catch (error) {
+    console.error('Erro ao buscar rascunho:', error);
+    res.status(500).json({ message: 'Erro ao buscar rascunho' });
+  }
+};
+
+// Função para auto-save do livro
+export const autoSave = async (req: Request, res: Response) => {
+  try {
+    const { data, timestamp } = req.body;
+    const userId = req.user.id;
+
+    // Verificar se o livro existe
+    let book;
+    if (data._id) {
+      book = await Book.findById(data._id);
+      if (!book) {
+        return res.status(404).json({ message: 'Livro não encontrado' });
+      }
+      if (book.author.toString() !== userId) {
+        return res.status(403).json({ message: 'Acesso negado' });
+      }
+    } else {
+      // Criar novo livro se não existir
+      book = new Book({
+        ...data,
+        author: userId,
+        status: 'draft'
+      });
+    }
+
+    // Atualizar dados do livro
+    Object.assign(book, {
+      ...data,
+      lastAutoSave: timestamp,
+      updatedAt: new Date()
+    });
+
+    await book.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Livro salvo automaticamente',
+      data: book
+    });
+  } catch (error) {
+    console.error('Erro no auto-save:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao salvar automaticamente',
+      error: error.message
+    });
+  }
+};
+
 // Função para gerar conteúdo do livro
 async function generateBookContent(bookId: string) {
   try {

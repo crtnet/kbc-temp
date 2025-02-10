@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { TextInput, Button, Text, SegmentedButtons, Card, Snackbar } from 'react-native-paper';
+import { TextInput, Button, Text, SegmentedButtons, Card, Snackbar, IconButton } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
+import { useAutoSave } from '../hooks/useAutoSave';
 import api from '../services/api';
 
 interface BookData {
@@ -19,6 +20,8 @@ export default function CreateBookScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [visible, setVisible] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'saving' | 'saved' | 'error' | null>(null);
   
   const [bookData, setBookData] = useState<BookData>({
     title: '',
@@ -28,6 +31,49 @@ export default function CreateBookScreen({ navigation }) {
     setting: '',
     tone: 'fun'
   });
+
+  // Configurar autosave
+  const { updateData, forceSave } = useAutoSave(bookData, {
+    interval: 30000, // Auto-save a cada 30 segundos
+    onSave: (savedData) => {
+      setLastSaved(new Date());
+      setAutoSaveStatus('saved');
+      setTimeout(() => setAutoSaveStatus(null), 3000);
+    },
+    onError: (error) => {
+      setAutoSaveStatus('error');
+      setError('Erro ao salvar automaticamente: ' + error.message);
+      setVisible(true);
+    }
+  });
+
+  // Atualizar dados no autosave quando bookData mudar
+  useEffect(() => {
+    updateData(bookData);
+  }, [bookData]);
+
+  // Verificar se existe um rascunho ao carregar
+  useEffect(() => {
+    const checkDraft = async () => {
+      try {
+        const response = await api.get('/books/draft/latest');
+        const draft = response.data;
+        
+        if (draft && window.confirm('Deseja continuar o rascunho anterior?')) {
+          setBookData(draft);
+          setStep(determineStep(draft));
+          setLastSaved(new Date(draft.lastAutoSave));
+          setAutoSaveStatus('saved');
+        }
+      } catch (error) {
+        if (error.response?.status !== 404) {
+          console.error('Erro ao buscar rascunho:', error);
+        }
+      }
+    };
+
+    checkDraft();
+  }, []);
 
   const handleNext = () => {
     if (step === 1 && !bookData.title) {
@@ -56,11 +102,21 @@ export default function CreateBookScreen({ navigation }) {
       navigation.goBack();
     }
   };
+
+  // Determinar em qual etapa o usuário parou
+  const determineStep = (data: BookData): number => {
+    if (!data.title) return 1;
+    if (!data.mainCharacter || !data.setting) return 2;
+    return 3;
+  };
   const handleCreateBook = async () => {
     try {
       setLoading(true);
-      console.log('Criando livro:', bookData);
       
+      // Forçar último salvamento antes de criar o livro
+      await forceSave();
+      
+      console.log('Criando livro:', bookData);
       const response = await api.post('/books', bookData);
       console.log('Livro criado:', response.data);
       
@@ -156,6 +212,29 @@ export default function CreateBookScreen({ navigation }) {
     <ScrollView style={styles.container}>
       <Card style={styles.card}>
         <Card.Content>
+          {/* Indicador de Auto-save */}
+          <View style={styles.autoSaveContainer}>
+            {autoSaveStatus === 'saving' && (
+              <Text style={styles.autoSaveText}>Salvando...</Text>
+            )}
+            {autoSaveStatus === 'saved' && (
+              <View style={styles.autoSaveRow}>
+                <IconButton icon="check-circle" size={16} color="#4CAF50" />
+                <Text style={[styles.autoSaveText, { color: '#4CAF50' }]}>
+                  Salvo {lastSaved ? `às ${lastSaved.toLocaleTimeString()}` : ''}
+                </Text>
+              </View>
+            )}
+            {autoSaveStatus === 'error' && (
+              <View style={styles.autoSaveRow}>
+                <IconButton icon="alert-circle" size={16} color="#f44336" />
+                <Text style={[styles.autoSaveText, { color: '#f44336' }]}>
+                  Erro ao salvar
+                </Text>
+              </View>
+            )}
+          </View>
+
           {/* Indicador de Progresso */}
           <View style={styles.progressContainer}>
             {[1, 2, 3].map((item) => (
@@ -215,6 +294,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  autoSaveContainer: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 1,
+  },
+  autoSaveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  autoSaveText: {
+    fontSize: 12,
+    color: '#666',
   },
   card: {
     margin: 10,

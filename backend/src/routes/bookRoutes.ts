@@ -12,5 +12,7 @@ router.use(authMiddleware);
 router.post('/', bookController.createBook);
 router.get('/:id', bookController.getBook);
 router.get('/', bookController.getUserBooks);
+router.post('/autosave', bookController.autoSave);
+router.get('/draft/latest', bookController.getLatestDraft);
 
 export default router;

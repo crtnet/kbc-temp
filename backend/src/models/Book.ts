@@ -52,6 +52,10 @@ const bookSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  },
+  lastAutoSave: {
+    type: Date,
+    default: null
   }
 });
 
