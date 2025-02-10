@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { TextInput, Button, Text, SegmentedButtons, Card, Snackbar, IconButton } from 'react-native-paper';
+import { ThemeSelector } from '../components/customization/ThemeSelector';
+import { CharacterCustomization } from '../components/customization/CharacterCustomization';
+import { StorySettings } from '../components/customization/StorySettings';
+import { Theme, CharacterDetails, StorySettings as StorySettingsType } from '../types/customization';
 import { useAuth } from '../contexts/AuthContext';
 import { useAutoSave } from '../hooks/useAutoSave';
 import api from '../services/api';
@@ -12,6 +16,9 @@ interface BookData {
   mainCharacter: string;
   setting: string;
   tone: string;
+  visualTheme: Theme;
+  characterDetails: CharacterDetails;
+  storySettings: StorySettings;
 }
 
 export default function CreateBookScreen({ navigation }) {
@@ -29,7 +36,38 @@ export default function CreateBookScreen({ navigation }) {
     theme: 'friendship',
     mainCharacter: '',
     setting: '',
-    tone: 'fun'
+    tone: 'fun',
+    visualTheme: 'classic',
+    characterDetails: {
+      name: '',
+      personality: {
+        traits: [],
+        motivation: '',
+        fears: [],
+      },
+      appearance: {
+        height: '',
+        hairColor: '',
+        eyeColor: '',
+        clothing: '',
+      },
+      relationships: {
+        family: [],
+        friends: [],
+        others: [],
+      },
+    },
+    storySettings: {
+      structure: 'linear',
+      emotionalTone: [],
+      educationalElements: {
+        subjects: [],
+        learningGoals: [],
+        ageGroup: '',
+      },
+      pacing: 'medium',
+      narrativeStyle: 'third-person',
+    }
   });
 
   // Configurar autosave
@@ -249,9 +287,33 @@ export default function CreateBookScreen({ navigation }) {
           </View>
 
           {/* Conteúdo do Passo */}
-          {step === 1 && renderStep1()}
-          {step === 2 && renderStep2()}
-          {step === 3 && renderStep3()}
+          {step === 1 && (
+            <>
+              {renderStep1()}
+              <ThemeSelector
+                selectedTheme={bookData.visualTheme}
+                onThemeSelect={(theme) => setBookData({ ...bookData, visualTheme: theme })}
+              />
+            </>
+          )}
+          {step === 2 && (
+            <>
+              {renderStep2()}
+              <CharacterCustomization
+                character={bookData.characterDetails}
+                onCharacterUpdate={(character) => setBookData({ ...bookData, characterDetails: character })}
+              />
+            </>
+          )}
+          {step === 3 && (
+            <>
+              {renderStep3()}
+              <StorySettings
+                settings={bookData.storySettings}
+                onSettingsUpdate={(settings) => setBookData({ ...bookData, storySettings: settings })}
+              />
+            </>
+          )}
 
           {/* Botões de Navegação */}
           <View style={styles.buttonContainer}>
