@@ -33,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inconsistent storage key names
 - Async initialization in AuthService singleton
 - Race condition in AuthContext initialization
+- AuthService initialization and state management
+- Promise handling in AuthService singleton
+- User session persistence
+- Error handling in authentication flow
 
 ## [0.1.0] - 2025-02-10
 

@@ -4,49 +4,50 @@ import { AUTH_STORAGE_KEYS, API_ROUTES } from './constants';
 import type { AuthResponse, LoginCredentials, AuthState, User } from './types';
 
 class AuthService {
-  private static instance: AuthService;
-  private state: AuthState = {
-    user: null,
-    token: null,
-    isAuthenticated: false
-  };
+  private static instance: AuthService | null = null;
+  private static initializationPromise: Promise<AuthService> | null = null;
+  private token: string | null = null;
+  private user: User | null = null;
+  private initialized = false;
 
-  private initialized: boolean = false;
-  private initPromise: Promise<void> | null = null;
-
-  private constructor() {
-    // Private constructor to enforce singleton
-    this.initPromise = this.initialize();
-  }
+  private constructor() {}
 
   public static async getInstance(): Promise<AuthService> {
     if (!AuthService.instance) {
-      AuthService.instance = new AuthService();
+      if (!AuthService.initializationPromise) {
+        AuthService.initializationPromise = new Promise(async (resolve) => {
+          const service = new AuthService();
+          await service.initialize();
+          AuthService.instance = service;
+          resolve(service);
+        });
+      }
+      await AuthService.initializationPromise;
     }
-    if (!AuthService.instance.initialized) {
-      await AuthService.instance.initPromise;
-      AuthService.instance.initialized = true;
-    }
-    return AuthService.instance;
+    return AuthService.instance!;
   }
 
-  private async initialize() {
+  private async initialize(): Promise<void> {
     try {
-      const [storedToken, storedUser] = await Promise.all([
-        AsyncStorage.getItem(AUTH_STORAGE_KEYS.TOKEN),
-        AsyncStorage.getItem(AUTH_STORAGE_KEYS.USER),
-      ]);
-
-      if (storedToken && storedUser) {
-        this.state = {
-          token: storedToken,
-          user: JSON.parse(storedUser),
-          isAuthenticated: true
-        };
-        this.configureAxiosToken(storedToken);
+      console.log('AuthService: Initializing...');
+      const storedToken = await AsyncStorage.getItem('@KidsBook:token');
+      if (storedToken) {
+        this.token = storedToken;
+        // Verificar se o token é válido
+        try {
+          const response = await api.get('/auth/verify');
+          this.user = response.data.user;
+        } catch (error) {
+          console.log('AuthService: Token inválido, limpando...');
+          await this.signOut();
+        }
       }
+      this.initialized = true;
+      console.log('AuthService: Initialized successfully');
     } catch (error) {
-      console.error('AuthService: Error initializing:', error);
+      console.error('AuthService: Initialization error:', error);
+      this.initialized = false;
+      throw error;
     }
   }
 
@@ -58,25 +59,22 @@ class AuthService {
     return { ...this.state };
   }
 
-  public async signIn(credentials: LoginCredentials): Promise<void> {
+  public async signIn({ email, password }: LoginCredentials): Promise<void> {
+    if (!this.initialized) {
+      throw new Error('AuthService not initialized');
+    }
+
+    console.log('AuthService: Starting login...', { email });
     try {
-      console.log('AuthService: Starting login...');
-      const response = await api.post<AuthResponse>(API_ROUTES.LOGIN, credentials);
-      const { user, token } = response.data;
+      const response = await api.post('/auth/login', { email, password });
+      console.log('AuthService: Server response:', response.data);
+      
+      const { token, user } = response.data;
+      this.token = token;
+      this.user = user;
 
-      await Promise.all([
-        AsyncStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token),
-        AsyncStorage.setItem(AUTH_STORAGE_KEYS.USER, JSON.stringify(user))
-      ]);
-
-      this.state = {
-        user,
-        token,
-        isAuthenticated: true
-      };
-
-      this.configureAxiosToken(token);
-      console.log('AuthService: Login successful');
+      await AsyncStorage.setItem('@KidsBook:token', token);
+      console.log('AuthService: Token stored successfully');
     } catch (error) {
       console.error('AuthService: Login error:', error);
       throw error;
@@ -84,24 +82,14 @@ class AuthService {
   }
 
   public async signOut(): Promise<void> {
-    try {
-      await Promise.all([
-        AsyncStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN),
-        AsyncStorage.removeItem(AUTH_STORAGE_KEYS.USER)
-      ]);
-
-      this.state = {
-        user: null,
-        token: null,
-        isAuthenticated: false
-      };
-
-      this.configureAxiosToken(null);
-      console.log('AuthService: Logout successful');
-    } catch (error) {
-      console.error('AuthService: Logout error:', error);
-      throw error;
+    if (!this.initialized) {
+      throw new Error('AuthService not initialized');
     }
+
+    this.token = null;
+    this.user = null;
+    await AsyncStorage.removeItem('@KidsBook:token');
+    console.log('AuthService: Logout successful');
   }
 
   public async verifyToken(): Promise<boolean> {
