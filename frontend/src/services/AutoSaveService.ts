@@ -1,7 +1,7 @@
 import { BookData } from '../types/book';
 
-interface AutoSaveConfig {
-  interval: number;
+export interface AutoSaveConfig {
+  interval?: number;
   onSave?: (data: BookData) => void;
   onError?: (error: Error) => void;
 }
@@ -20,6 +20,7 @@ class AutoSaveService {
   }
 
   public start(initialData: BookData): void {
+    console.log('AutoSaveService: Iniciando com dados:', initialData);
     this.currentData = initialData;
     this.startTimer();
   }
@@ -32,12 +33,16 @@ class AutoSaveService {
   }
 
   public updateData(newData: Partial<BookData>): void {
+    console.log('AutoSaveService: Atualizando dados:', newData);
     if (this.currentData) {
       this.currentData = {
         ...this.currentData,
         ...newData,
       };
       this.isDirty = true;
+      console.log('AutoSaveService: Dados atualizados:', this.currentData);
+    } else {
+      console.log('AutoSaveService: Sem dados iniciais para atualizar');
     }
   }
 
