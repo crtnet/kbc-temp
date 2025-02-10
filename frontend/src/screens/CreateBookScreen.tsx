@@ -22,6 +22,8 @@ interface BookData {
 }
 
 export default function CreateBookScreen({ navigation }) {
+  console.log('CreateBookScreen: Iniciando renderização');
+  
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -29,6 +31,17 @@ export default function CreateBookScreen({ navigation }) {
   const [visible, setVisible] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saving' | 'saved' | 'error' | null>(null);
+  
+  // Verificar se o usuário está autenticado
+  useEffect(() => {
+    console.log('CreateBookScreen: Verificando autenticação');
+    if (!user) {
+      console.log('CreateBookScreen: Usuário não autenticado');
+      navigation.navigate('Login');
+      return;
+    }
+    console.log('CreateBookScreen: Usuário autenticado:', user);
+  }, [user, navigation]);
   
   const [bookData, setBookData] = useState<BookData>({
     title: '',

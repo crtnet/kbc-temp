@@ -39,7 +39,10 @@ export default function HomeScreen({ navigation }) {
       <FAB
         icon="plus"
         style={styles.fab}
-        onPress={() => navigation.navigate('CreateBook')}
+        onPress={() => {
+          console.log('HomeScreen: Navegando para CreateBook');
+          navigation.navigate('CreateBook');
+        }}
         label="Criar Livro"
       />
     </View>
