@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Improved state management in AuthService
+- User data persistence with auth state
+- New signOut method in AuthService
+- Enhanced error handling and logging
 - Singleton pattern for AuthService
 - Token verification endpoint
 - Detailed logging for authentication flow
