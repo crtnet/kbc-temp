@@ -1,13 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../services/api';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  type: string;
-}
+import { AuthService } from '../services/auth/AuthService';
+import type { User } from '../services/auth/types';
 
 interface AuthContextData {
   signed: boolean;
@@ -20,94 +13,63 @@ interface AuthContextData {
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const authService = AuthService.getInstance();
   const [loading, setLoading] = useState(true);
-
-  const checkToken = async () => {
-    try {
-      const token = await AsyncStorage.getItem('@KidsBook:token');
-      if (!token) {
-        return false;
-      }
-
-      await api.get('/auth/verify');
-      return true;
-    } catch (error) {
-      console.error('Erro ao verificar token:', error);
-      return false;
-    }
-  };
+  const [state, setState] = useState(authService.getState());
 
   useEffect(() => {
-    async function loadStorageData() {
+    async function initializeAuth() {
       try {
-        console.log('Carregando dados do storage...');
-        const storedUser = await AsyncStorage.getItem('@KidsBook:user');
-        const storedToken = await AsyncStorage.getItem('@KidsBook:token');
-
-        if (storedUser && storedToken) {
-          console.log('Dados encontrados no storage');
-          const isTokenValid = await checkToken();
-          
-          if (isTokenValid) {
-            setUser(JSON.parse(storedUser));
-            api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-            console.log('Token válido, usuário restaurado');
-          } else {
-            console.log('Token inválido, fazendo logout');
-            await signOut();
-          }
+        console.log('AuthContext: Checking token validity...');
+        const isValid = await authService.verifyToken();
+        
+        if (!isValid) {
+          console.log('AuthContext: Invalid token, logging out...');
+          await authService.signOut();
         }
+        
+        setState(authService.getState());
       } catch (error) {
-        console.error('Erro ao carregar dados:', error);
+        console.error('AuthContext: Error initializing auth:', error);
       } finally {
         setLoading(false);
       }
     }
 
-    loadStorageData();
+    initializeAuth();
   }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('Iniciando login...');
-      const response = await api.post('/auth/login', { email, password });
-      console.log('Resposta do login:', response.data);
-
-      const { user: userData, token } = response.data;
-
-      await AsyncStorage.setItem('@KidsBook:user', JSON.stringify(userData));
-      await AsyncStorage.setItem('@KidsBook:token', token);
-
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(userData);
-
-      console.log('Login concluído com sucesso!');
+      console.log('AuthContext: Starting login...');
+      await authService.signIn({ email, password });
+      setState(authService.getState());
+      console.log('AuthContext: Login successful!');
     } catch (error) {
-      console.error('Erro no login:', error);
+      console.error('AuthContext: Login error:', error);
       throw error;
     }
   };
 
   const signOut = async () => {
     try {
-      await AsyncStorage.removeItem('@KidsBook:user');
-      await AsyncStorage.removeItem('@KidsBook:token');
-      delete api.defaults.headers.common['Authorization'];
-      setUser(null);
+      console.log('AuthContext: Starting logout...');
+      await authService.signOut();
+      setState(authService.getState());
+      console.log('AuthContext: Logout successful!');
     } catch (error) {
-      console.error('Erro no logout:', error);
+      console.error('AuthContext: Logout error:', error);
     }
   };
 
   return (
     <AuthContext.Provider 
       value={{ 
-        signed: !!user, 
-        user, 
-        loading, 
-        signIn, 
-        signOut 
+        signed: state.isAuthenticated,
+        user: state.user,
+        loading,
+        signIn,
+        signOut
       }}
     >
       {children}
