@@ -1,18 +1,15 @@
-// frontend/App.tsx
+// frontend/src/App.tsx
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { Provider as PaperProvider } from 'react-native-paper';
-import { AuthProvider } from './src/contexts/AuthContext';
-import { AppNavigator } from './src/navigation/AppNavigator';
+import { View } from 'react-native';
+import { AuthProvider } from './contexts/AuthContext';
+import { LoginScreen } from './screens/Login';
 
-export default function App() {
+export function App() {
   return (
-    <AuthProvider>
-      <PaperProvider>
-        <NavigationContainer>
-          <AppNavigator />
-        </NavigationContainer>
-      </PaperProvider>
-    </AuthProvider>
+    <View style={{ flex: 1 }}>
+      <AuthProvider>
+        <LoginScreen />
+      </AuthProvider>
+    </View>
   );
 }

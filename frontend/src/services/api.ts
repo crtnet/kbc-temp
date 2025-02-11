@@ -1,19 +1,38 @@
-export { api } from './api/axiosConfig';
+// frontend/src/services/api.ts
+import { axiosInstance } from './config/axios';
+import { AuthService } from './auth/AuthService';
 
-// Configure interceptors
-import { api } from './api/axiosConfig';
+const api = axiosInstance;
+
+api.interceptors.request.use(async (config) => {
+  try {
+    const authService = await AuthService.getInstance();
+    const token = authService.getToken();
+    
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    return config;
+  } catch (error) {
+    console.error('API interceptor error:', error);
+    return config;
+  }
+});
 
 api.interceptors.response.use(
-  (response) => {
-    console.log(`API: Success response from ${response.config.url}`);
-    return response;
-  },
+  (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      console.log('API: 401 error detected - Invalid or expired token');
-      // Instead of directly calling AuthService, we'll emit an event that AuthContext will handle
-      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      try {
+        const authService = await AuthService.getInstance();
+        await authService.signOut();
+      } catch (signOutError) {
+        console.error('Error during sign out:', signOutError);
+      }
     }
     return Promise.reject(error);
   }
 );
+
+export default api;

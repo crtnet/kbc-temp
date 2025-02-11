@@ -1,9 +1,19 @@
+// frontend/src/services/auth/AuthService.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, configureAxiosToken } from '../api/axiosConfig';
-import { AUTH_STORAGE_KEYS, API_ROUTES } from './constants';
-import type { AuthResponse, LoginCredentials, AuthState, User } from './types';
+import { axiosInstance } from '../config/axios';
 
-class AuthService {
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface SignInCredentials {
+  email: string;
+  password: string;
+}
+
+export class AuthService {
   private static instance: AuthService | null = null;
   private static initializationPromise: Promise<AuthService> | null = null;
   private token: string | null = null;
@@ -33,12 +43,13 @@ class AuthService {
       const storedToken = await AsyncStorage.getItem('@KidsBook:token');
       if (storedToken) {
         this.token = storedToken;
-        // Verificar se o token é válido
         try {
-          const response = await api.get('/auth/verify');
+          const response = await axiosInstance.get('/auth/verify', {
+            headers: { Authorization: `Bearer ${storedToken}` }
+          });
           this.user = response.data.user;
         } catch (error) {
-          console.log('AuthService: Token inválido, limpando...');
+          console.log('AuthService: Invalid token, clearing...');
           await this.signOut();
         }
       }
@@ -51,22 +62,14 @@ class AuthService {
     }
   }
 
-  private configureAxiosToken(token: string | null) {
-    configureAxiosToken(token);
-  }
-
-  public getState(): AuthState {
-    return { ...this.state };
-  }
-
-  public async signIn({ email, password }: LoginCredentials): Promise<void> {
+  public async signIn({ email, password }: SignInCredentials): Promise<void> {
     if (!this.initialized) {
       throw new Error('AuthService not initialized');
     }
 
     console.log('AuthService: Starting login...', { email });
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await axiosInstance.post('/auth/login', { email, password });
       console.log('AuthService: Server response:', response.data);
       
       const { token, user } = response.data;
@@ -89,34 +92,17 @@ class AuthService {
     this.token = null;
     this.user = null;
     await AsyncStorage.removeItem('@KidsBook:token');
-    console.log('AuthService: Logout successful');
   }
 
-  public async verifyToken(): Promise<boolean> {
-    try {
-      if (!this.state.token) {
-        console.log('AuthService: No token found');
-        return false;
-      }
-
-      const response = await api.get(API_ROUTES.VERIFY);
-      console.log('AuthService: Token verified successfully');
-      return response.status === 200;
-    } catch (error) {
-      console.error('AuthService: Token verification failed:', error);
-      await this.signOut();
-      return false;
-    }
+  public getToken(): string | null {
+    return this.token;
   }
 
-  public async updateUser(user: User): Promise<void> {
-    try {
-      await AsyncStorage.setItem(AUTH_STORAGE_KEYS.USER, JSON.stringify(user));
-      this.state.user = user;
-      console.log('AuthService: User updated successfully');
-    } catch (error) {
-      console.error('AuthService: Error updating user:', error);
-      throw error;
-    }
+  public getUser(): User | null {
+    return this.user;
+  }
+
+  public isAuthenticated(): boolean {
+    return !!this.token;
   }
 }

@@ -1,126 +1,120 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+// frontend/src/contexts/AuthContext.tsx
+import React, { createContext, useCallback, useState, useContext, useEffect } from 'react';
+import { View, ActivityIndicator, Text } from 'react-native';
 import { AuthService } from '../services/auth/AuthService';
-import type { User } from '../services/auth/types';
+import { globalStyles } from '../styles/global';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface SignInCredentials {
+  email: string;
+  password: string;
+}
 
 interface AuthContextData {
-  signed: boolean;
   user: User | null;
   loading: boolean;
-  signIn(email: string, password: string): Promise<void>;
+  signIn(credentials: SignInCredentials): Promise<void>;
   signOut(): Promise<void>;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [authService, setAuthService] = useState<AuthService | null>(null);
   const [loading, setLoading] = useState(true);
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    token: null,
-    isAuthenticated: false
-  });
+  const [authService, setAuthService] = useState<AuthService | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const initializeAuthService = async () => {
+    const initializeAuth = async () => {
       try {
+        console.log('AuthContext: Initializing AuthService...');
         const service = await AuthService.getInstance();
         setAuthService(service);
-        setState(service.getState());
+        setUser(service.getUser());
+        console.log('AuthContext: AuthService initialized successfully');
       } catch (error) {
-        console.error('Error initializing AuthService:', error);
+        console.error('AuthContext: Error initializing AuthService:', error);
+        setError('Failed to initialize authentication service');
       } finally {
         setLoading(false);
       }
     };
 
-    initializeAuthService();
+    initializeAuth();
   }, []);
 
-  useEffect(() => {
-    if (!authService) return;
-
-    async function verifyToken() {
-      try {
-        console.log('AuthContext: Checking token validity...');
-        const isValid = await authService.verifyToken();
-        
-        if (!isValid) {
-          console.log('AuthContext: Invalid token, logging out...');
-          await authService.signOut();
-        }
-        
-        setState(authService.getState());
-      } catch (error) {
-        console.error('AuthContext: Error checking token:', error);
-      }
-    }
-
-    // Listen for unauthorized events
-    const handleUnauthorized = () => {
-      console.log('AuthContext: Received unauthorized event');
-      signOut();
-    };
-
-    window.addEventListener('auth:unauthorized', handleUnauthorized);
-    verifyToken();
-
-    return () => {
-      window.removeEventListener('auth:unauthorized', handleUnauthorized);
-    };
-  }, [authService]);
-
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async ({ email, password }: SignInCredentials) => {
     if (!authService) {
-      throw new Error('AuthService not initialized');
+      throw new Error('Authentication service not available');
     }
 
     try {
-      console.log('AuthContext: Starting login...');
+      console.log('AuthContext: Attempting login...');
       await authService.signIn({ email, password });
-      setState(authService.getState());
-      console.log('AuthContext: Login successful!');
+      setUser(authService.getUser());
+      console.log('AuthContext: Login successful');
     } catch (error) {
-      console.error('AuthContext: Login error:', error);
+      console.error('AuthContext: Login failed:', error);
       throw error;
     }
-  };
+  }, [authService]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     if (!authService) {
-      console.warn('AuthService not initialized');
-      return;
+      throw new Error('Authentication service not available');
     }
 
     try {
-      console.log('AuthContext: Starting logout...');
       await authService.signOut();
-      setState(authService.getState());
-      console.log('AuthContext: Logout successful!');
+      setUser(null);
     } catch (error) {
-      console.error('AuthContext: Logout error:', error);
+      console.error('AuthContext: Logout failed:', error);
+      throw error;
     }
-  };
+  }, [authService]);
+
+  if (loading) {
+    return (
+      <View style={globalStyles.loading}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={globalStyles.error}>
+        <Text style={globalStyles.errorText}>{error}</Text>
+      </View>
+    );
+  }
 
   return (
-    <AuthContext.Provider 
-      value={{ 
-        signed: state.isAuthenticated,
-        user: state.user,
-        loading,
-        signIn,
-        signOut
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      signIn,
+      signOut,
+      isAuthenticated: !!user
+    }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export function useAuth() {
+export function useAuth(): AuthContextData {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 }
