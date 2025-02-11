@@ -25,6 +25,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed authentication state synchronization
 - Fixed token injection in API requests
 
+## [0.3.0] - 2025-02-11
+
+### Added
+- Implemented AuthState singleton for centralized state management
+- Added token refresh queue for handling concurrent requests
+- Added automatic token refresh on 401 errors
+- Added server-side logout handling
+- Enhanced logging system with detailed error tracking
+
+### Changed
+- Refactored AuthService to use new AuthState manager
+- Improved interceptors with request queue management
+- Enhanced token refresh logic with retry mechanism
+- Updated authentication flow with better error handling
+- Improved session management with atomic state updates
+
+### Fixed
+- Fixed token not being maintained between requests
+- Fixed race conditions in token refresh
+- Fixed circular dependencies in auth system
+- Fixed memory leaks in authentication state
+- Fixed concurrent request handling during token refresh
+
 ## [Unreleased]
 
 ### Added
