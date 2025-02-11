@@ -1,15 +1,19 @@
-// frontend/src/App.tsx
 import React from 'react';
-import { View } from 'react-native';
-import { AuthProvider } from './contexts/AuthContext';
-import { LoginScreen } from './screens/Login';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthProvider } from './src/contexts/AuthContext';
+import { Navigation } from './src/navigation';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
-export function App() {
+const App: React.FC = () => {
   return (
-    <View style={{ flex: 1 }}>
-      <AuthProvider>
-        <LoginScreen />
-      </AuthProvider>
-    </View>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <Navigation />
+        </AuthProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
-}
+};
+
+export default App;
