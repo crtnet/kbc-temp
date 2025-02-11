@@ -2,18 +2,18 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApiConfig } from '../config/api';
 
-interface AuthContextData {
-  signed: boolean;
-  user: object | null;
-  loading: boolean;
-  signIn(credentials: { email: string; password: string }): Promise<void>;
-  signOut(): void;
-}
-
 interface User {
   id: string;
   name: string;
   email: string;
+}
+
+interface AuthContextData {
+  signed: boolean;
+  user: User | null;
+  loading: boolean;
+  signIn(credentials: { email: string; password: string }): Promise<void>;
+  signOut(): Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -66,10 +66,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Invalid response format');
       }
 
+      // Atualize o estado do usuário
       setUser(data.user);
-      await AsyncStorage.setItem('@KBC:user', JSON.stringify(data.user));
-      await AsyncStorage.setItem('@KBC:token', data.token);
-      
+
+      // Salve os dados no AsyncStorage
+      await Promise.all([
+        AsyncStorage.setItem('@KBC:user', JSON.stringify(data.user)),
+        AsyncStorage.setItem('@KBC:token', data.token)
+      ]);
+
       console.log('Successfully signed in');
     } catch (error) {
       console.error('Sign in error:', error);
@@ -88,7 +93,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ signed: !!user, user, loading, signIn, signOut }}>
+    <AuthContext.Provider 
+      value={{ 
+        signed: !!user, 
+        user, 
+        loading, 
+        signIn, 
+        signOut 
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

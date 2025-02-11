@@ -19,6 +19,7 @@ export function LoginScreen() {
       setError('');
       setLoading(true);
       await signIn({ email, password });
+      console.log('Login successful');
     } catch (err) {
       console.error('Login failed:', err);
       setError('Falha no login. Verifique suas credenciais.');
@@ -40,6 +41,7 @@ export function LoginScreen() {
         onChangeText={setEmail}
         autoCapitalize="none"
         keyboardType="email-address"
+        editable={!loading}
       />
       
       <TextInput
@@ -48,6 +50,7 @@ export function LoginScreen() {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        editable={!loading}
       />
       
       {loading ? (
